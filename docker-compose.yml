@@ -1,0 +1,34 @@
+php-fpm:
+    image: 'bitnami/php-fpm'
+    ports:
+        - '9000:9000'
+    volumes:
+        - ./public:/myapp
+
+mysql:
+    image: 'mariadb'
+    ports:
+        - '3306:3306'
+    volumes:
+        - ./db-data:/var/lib/mysql
+    links:
+        -  php-fpm
+    environment:
+        - MYSQL_ROOT_PASSWORD=RootPassword
+
+redis:
+    image: 'redis'
+    ports:
+        - '6380:6380'
+    volumes:
+        - ./redis-server:/var/lib/redis
+    links:
+        -  php-fpm
+
+memcached:
+    image: 'memcached'
+    ports:
+        - '11211:11211'
+        - '13036:13036'
+    links: 
+        - php-fpm
