@@ -1,0 +1,72 @@
+- hosts: 127.0.0.1
+  connection: local
+
+  tasks:
+    - debug: msg="ansible_distribution={{ansible_distribution}}"
+
+    - name: install dependencies (if necessary)
+      apt: name={{item}} state=installed
+      with_items:
+        - apt-transport-https
+        - ca-certificates
+        - software-properties-common
+        - curl
+        - git
+      become: true
+
+    - name: clone app from  github
+      git: repo=https://github.com/donnikanton/php.git dest=/home/tvil/dev/git
+
+    - name: add dotdeb repo
+      apt_repository: repo='deb http://packages.dotdeb.org jessie all'
+      become: true
+
+    - name: add Docker’s official GPG key
+      apt_key: url=https://download.docker.com/linux/ubuntu/gpg state=present
+      become: true
+
+    - name: install docker composer
+      get_url: url=https://github.com/docker/compose/releases/download/1.17.1/docker-compose-Linux-x86_64 dest=/usr/local/bin/docker-compose
+      become: true
+
+    - name: create Docker CE repo line
+      command: bash -c "echo \"deb [arch=amd64] https://download.docker.com/linux/"{{ansible_distribution|lower}}" $(lsb_release -cs)  stable\" "
+      register: docker_repo_line
+
+    - debug: msg="{{docker_repo_line.stdout}}"
+
+    - name: add docker repo
+      apt_repository: 
+        repo: "{{docker_repo_line.stdout}}"
+        update_cache: yes
+      become: true
+
+    - name: install docker ce
+      apt:
+        name: docker-ce
+      become: true
+
+    - name: add a signing key nginx
+      apt_key: url=https://nginx.ru/keys/nginx_signing.key state=present
+      become: true
+
+    - name: add nginx repo
+      apt_repository:
+        repo: deb http://nginx.org/packages/debian/ stretch nginx
+        update_cache: yes
+      become: true
+
+    - name: install nginx web-server
+      apt: name=nginx state=installed update_cache=true
+      become: true
+
+    - name: copy config file nginx
+      command: bash -c "cp  /home/tvil/dev/ansible/cfg/nginx.conf  /etc/nginx/"
+      become: true
+
+    - service: name=nginx state=started
+      become: true
+
+    - name: run docker-compose with settings lemp
+      command: 'docker-compose -f /home/tvil/dev/docker-compose.yml up -d'
+      become: true
